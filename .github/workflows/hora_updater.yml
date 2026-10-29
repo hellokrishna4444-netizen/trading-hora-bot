@@ -1,0 +1,29 @@
+name: Daily Hora Auto Updater
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync-hora:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Libraries
+        run: |
+          pip install -r requirements.txt
+
+      - name: Execute Hora Script
+        env:
+          HORA_WEBHOOK_URL: ${{ secrets.HORA_WEBHOOK_URL }}
+        run: |
+          python hora_sheets_updater.py
