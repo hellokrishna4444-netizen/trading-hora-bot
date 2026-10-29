@@ -29,7 +29,6 @@ def calculate_24_horas(city_name, region, lat, lon, tz_str, target_date):
     sunset_today = s_today['sunset']
     sunrise_tomorrow = s_tomorrow['sunrise']
     
-    # दिनमान (Day duration) और रात्रिमान (Night duration)
     day_duration = (sunset_today - sunrise_today).total_seconds()
     night_duration = (sunrise_tomorrow - sunset_today).total_seconds()
     
@@ -42,7 +41,7 @@ def calculate_24_horas(city_name, region, lat, lon, tz_str, target_date):
     
     horas = []
     
-    # दिन की 12 होरा
+    # Din ki 12 hora
     curr_start = sunrise_today
     for i in range(12):
         curr_end = curr_start + day_hora_len
@@ -54,7 +53,7 @@ def calculate_24_horas(city_name, region, lat, lon, tz_str, target_date):
         ])
         curr_start = curr_end
         
-    # रात की 12 होरा
+    # Raat ki 12 hora
     curr_start = sunset_today
     for i in range(12):
         curr_end = curr_start + night_hora_len
@@ -68,7 +67,7 @@ def calculate_24_horas(city_name, region, lat, lon, tz_str, target_date):
         
     return horas
 
-def push_to_sheets(payload):
+def push_to_sheets(date_str, payload):
     webhook_url = os.environ.get("HORA_WEBHOOK_URL")
     if not webhook_url:
         print("CRITICAL: HORA_WEBHOOK_URL environment variable is missing or empty!")
@@ -77,20 +76,25 @@ def push_to_sheets(payload):
     headers = ["Market / Exchange", "Hora #", "Type", "Planet Lord", "Local Start", "Local End", "IST Start", "IST End"]
     all_rows = [headers] + payload
     
-    print(f"Sending {len(all_rows)} rows to Google Sheets...")
-    response = requests.post(webhook_url, json=all_rows, timeout=30)
+    packet = {
+        "date": date_str,
+        "data": all_rows
+    }
+    
+    print(f"Sending {len(all_rows)} rows for date {date_str} to Google Sheets...")
+    response = requests.post(webhook_url, json=packet, timeout=30)
     print("Apps Script Response:", response.text)
     if response.status_code != 200:
-        print(f"Failed with status code: {response.status_code}")
         exit(1)
 
 if __name__ == "__main__":
     ist = pytz.timezone("Asia/Kolkata")
     today = datetime.datetime.now(ist).date()
+    today_str = today.strftime("%Y-%m-%d")
     
     mumbai = calculate_24_horas("Mumbai (NSE)", "India", 19.0760, 72.8777, "Asia/Kolkata", today)
     london = calculate_24_horas("London (LBMA)", "UK", 51.5074, -0.1278, "Europe/London", today)
     ny = calculate_24_horas("New York (COMEX)", "USA", 40.7128, -74.0060, "America/New_York", today)
     
     combined_horas = mumbai + london + ny
-    push_to_sheets(combined_horas)
+    push_to_sheets(today_str, combined_horas)
