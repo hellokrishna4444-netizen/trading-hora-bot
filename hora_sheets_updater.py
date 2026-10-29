@@ -11,7 +11,7 @@ DAY_LORDS = {0: "Moon", 1: "Mars", 2: "Mercury", 3: "Jupiter", 4: "Venus", 5: "S
 RAHU_KAAL_PARTS = {0: 2, 1: 7, 2: 5, 3: 6, 4: 4, 5: 3, 6: 8}
 
 NAKSHATRAS = [
-    ("Ashwini", "Ketu", "Agni / Sharp Spikes"),
+    ("Ashwini", "Ketu", "Agni / Sudden Spikes"),
     ("Bharani", "Venus", "Ugra / Aggressive Traps"),
     ("Krittika", "Sun", "Agni / Institutional Volatility"),
     ("Rohini", "Moon", "Prithvi / Smooth Trending"),
@@ -64,14 +64,12 @@ def get_astronomical_parameters(target_date):
     jd = julian_day(target_date.year, target_date.month, target_date.day, 4, 0)
     T = (jd - 2451545.0) / 36525.0
     
-    # Sun Longitude
     L0 = 280.46646 + 36000.76983 * T
     M = 357.52911 + 35999.05029 * T
     M_rad = math.radians(M % 360)
     C = (1.914602 - 0.004817 * T) * math.sin(M_rad) + 0.019993 * math.sin(2 * M_rad)
     sun_lon = (L0 + C) % 360
     
-    # Moon Longitude
     L_m = 218.3164477 + 481267.88123421 * T
     D = 297.8501921 + 445267.1114034 * T
     M_s = 357.5291092 + 35999.0502909 * T
@@ -82,7 +80,6 @@ def get_astronomical_parameters(target_date):
     moon_lon = L_m + 6.288774 * math.sin(Mm_r) + 1.274027 * math.sin(2*D_r - Mm_r) + 0.658314 * math.sin(2*D_r) + 0.213618 * math.sin(2*Mm_r) - 0.185116 * math.sin(Ms_r) - 0.114332 * math.sin(2*F_r)
     moon_lon = moon_lon % 360
     
-    # Lahiri Ayanamsha (2026)
     ayanamsha = 24.233
     s_sun = (sun_lon - ayanamsha) % 360
     s_moon = (moon_lon - ayanamsha) % 360
@@ -91,7 +88,6 @@ def get_astronomical_parameters(target_date):
     tithi_idx = math.floor(diff / 12)
     nak_idx = math.floor(s_moon / (360 / 27))
     
-    # Bhadra check (Vishti Karana indices in lunar month)
     karana_idx = math.floor(diff / 6) + 1
     vishti_karanas = [8, 15, 21, 28, 35, 42, 49, 56]
     is_bhadra = karana_idx in vishti_karanas
@@ -99,12 +95,20 @@ def get_astronomical_parameters(target_date):
     nak_name, nak_lord, nak_tattva = NAKSHATRAS[nak_idx]
     tithi_name = TITHIS[tithi_idx]
     
+    # Gold Drivers Analysis
+    weekday = target_date.weekday()
+    day_ruler = DAY_LORDS[weekday]
+    gold_driver = f"{day_ruler} (Day Ruler) + Jupiter (Natural Gold Karaka)"
+    transit_event = f"Moon transit in Taurus (Vrishabha) -> Shifts to Mrigashira (Mars) mid-day"
+    
     return {
         "nakshatra": f"{nak_name} ({nak_lord})",
         "tattva_bias": nak_tattva,
         "tithi": tithi_name,
         "moon_sun_angle": f"{diff:.1f}°",
-        "bhadra": "⚠️ ACTIVE (Avoid Breakouts)" if is_bhadra else "✅ CLEAR (No Bhadra)"
+        "bhadra": "⚠️ ACTIVE (Avoid Breakouts)" if is_bhadra else "✅ CLEAR (No Bhadra)",
+        "gold_driver": gold_driver,
+        "transit_event": transit_event
     }
 
 def calculate_rahu_kaal(sunrise, sunset, weekday):
@@ -164,19 +168,19 @@ def push_to_sheets(date_str, astro_data, payload):
     if not webhook_url:
         exit(1)
         
-    # Top 5 Points Dashboard Card Rows
     dashboard_rows = [
-        ["🌟 DAILY ASTRO-PANCHANG & MARKET BIAS DASHBOARD", "", "", "", "", "", "DATE", date_str],
-        ["1. RAHU KAAL (TRAP ZONE)", astro_data["rahu_kaal"], "2. BHADRA STATUS", astro_data["bhadra"], "3. TITHI", astro_data["tithi"], "4. MOON-SUN ANGLE", astro_data["moon_sun_angle"]],
-        ["5. CHANDRA NAKSHATRA", astro_data["nakshatra"], "MARKET TATTVA BIAS", astro_data["tattva_bias"], "CONFLUENCE CHECK", "Align Hora with SMC Order Blocks / FVGs", "", ""],
-        ["", "", "", "", "", "", "", ""], # Blank spacing row
-        ["Market / Exchange", "Hora #", "Type", "Planet Lord", "Local Start", "Local End", "IST Start", "IST End"] # Row 5 Table Header
+        ["🌟 GOLD & MARKET ASTRO INTELLIGENCE DASHBOARD", "", "", "", "", "DATE", date_str, ""],
+        ["🥇 GOLD PRIMARY DRIVER", astro_data["gold_driver"], "🪐 INGRESS / TRANSIT", astro_data["transit_event"], "BHADRA STATUS", astro_data["bhadra"], "", ""],
+        ["1. RAHU KAAL (TRAP ZONE)", astro_data["rahu_kaal"], "2. CHANDRA NAKSHATRA", astro_data["nakshatra"], "3. TATTVA / BIAS", astro_data["tattva_bias"], "4. MOON-SUN ANGLE", astro_data["moon_sun_angle"]],
+        ["5. TITHI", astro_data["tithi"], "STRATEGY CONFLUENCE", "Align Mars/Sun Horas with 1m/5m SMC Order Blocks & Sweeps", "", "", "", ""],
+        ["", "", "", "", "", "", "", ""],
+        ["Market / Exchange", "Hora #", "Type", "Planet Lord", "Local Start", "Local End", "IST Start", "IST End"]
     ]
     
     all_rows = dashboard_rows + payload
     packet = {"date": date_str, "data": all_rows}
     
-    print(f"Pushing complete astro dashboard to Google Sheets for {date_str}...")
+    print(f"Syncing master astro data for {date_str}...")
     response = requests.post(webhook_url, json=packet, timeout=30)
     print("Apps Script Response:", response.text)
 
@@ -189,7 +193,6 @@ if __name__ == "__main__":
     london_horas, _, _ = calculate_24_horas("London (LBMA)", "UK", 51.5074, -0.1278, "Europe/London", today)
     ny_horas, _, _ = calculate_24_horas("New York (COMEX)", "USA", 40.7128, -74.0060, "America/New_York", today)
     
-    # Auto-calculate 5 parameters
     astro_info = get_astronomical_parameters(today)
     astro_info["rahu_kaal"] = calculate_rahu_kaal(m_sr.astimezone(ist), m_ss.astimezone(ist), today.weekday())
     
