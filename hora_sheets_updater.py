@@ -1,6 +1,7 @@
 import os
 import math
 import datetime
+import time
 import pytz
 import requests
 from astral import LocationInfo
@@ -10,7 +11,6 @@ CHALDEAN_ORDER = ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon"
 DAY_LORDS = {0: "Moon", 1: "Mars", 2: "Mercury", 3: "Jupiter", 4: "Venus", 5: "Saturn", 6: "Sun"}
 RAHU_KAAL_PARTS = {0: 2, 1: 7, 2: 5, 3: 6, 4: 4, 5: 3, 6: 8}
 
-# Volatility profile for each planetary ruler
 PLANET_VOLATILITY = {
     "Mars": ("HIGH", "20-35 Pips (Gold) / 80-120 Pts (Nifty)", "Explosive Stop Sweeps"),
     "Sun": ("HIGH", "18-30 Pips (Gold) / 70-110 Pts (Nifty)", "Institutional Trend Follow"),
@@ -103,7 +103,6 @@ def get_astronomical_parameters(target_date):
         "nakshatra": f"{nak_name} ({nak_lord})",
         "tattva_bias": nak_tattva,
         "tithi": f"{tithi_name} [{tithi_nature} - {tithi_bias}]",
-        "tithi_bias": tithi_bias,
         "moon_sun_angle": f"{diff:.1f}°",
         "bhadra": "⚠️ ACTIVE (Avoid Breakouts)" if is_bhadra else "✅ CLEAR (No Bhadra)"
     }
@@ -185,7 +184,7 @@ if __name__ == "__main__":
     ist = pytz.timezone("Asia/Kolkata")
     today = datetime.datetime.now(ist).date()
     
-    print("Computing astronomical ephemeris: Past 30 days to Next 15 days...")
+    print("Computing astronomical ephemeris: -30 days to +15 days...")
     all_sheet_packets = []
     for offset in range(-30, 16):
         d = today + datetime.timedelta(days=offset)
@@ -196,10 +195,21 @@ if __name__ == "__main__":
         print("CRITICAL: Missing HORA_WEBHOOK_URL secret!")
         exit(1)
         
-    master_payload = {
-        "today": today.strftime("%Y-%m-%d"),
-        "sheets": all_sheet_packets
-    }
+    today_str = today.strftime("%Y-%m-%d")
     
-    resp = requests.post(webhook_url, json=master_payload, timeout=120)
-    print("Sheets Update Response:", resp.text)
+    # Send in small chunks of 5 days to avoid Google Apps Script Timeout
+    chunk_size = 5
+    for i in range(0, len(all_sheet_packets), chunk_size):
+        chunk = all_sheet_packets[i:i + chunk_size]
+        is_last_chunk = (i + chunk_size) >= len(all_sheet_packets)
+        payload = {
+            "today": today_str,
+            "sheets": chunk,
+            "cleanup": is_last_chunk
+        }
+        print(f"Pushing chunk {i//chunk_size + 1}/{(len(all_sheet_packets)-1)//chunk_size + 1} ({len(chunk)} dates)...")
+        res = requests.post(webhook_url, json=payload, timeout=60)
+        print("Result:", res.text)
+        time.sleep(1)
+
+    print("All 45 dates successfully synced with soft color formatting!")
