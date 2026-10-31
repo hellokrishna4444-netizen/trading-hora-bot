@@ -10,6 +10,17 @@ CHALDEAN_ORDER = ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon"
 DAY_LORDS = {0: "Moon", 1: "Mars", 2: "Mercury", 3: "Jupiter", 4: "Venus", 5: "Saturn", 6: "Sun"}
 RAHU_KAAL_PARTS = {0: 2, 1: 7, 2: 5, 3: 6, 4: 4, 5: 3, 6: 8}
 
+# Volatility profile for each planetary ruler
+PLANET_VOLATILITY = {
+    "Mars": ("HIGH", "20-35 Pips (Gold) / 80-120 Pts (Nifty)", "Explosive Stop Sweeps"),
+    "Sun": ("HIGH", "18-30 Pips (Gold) / 70-110 Pts (Nifty)", "Institutional Trend Follow"),
+    "Mercury": ("HIGH", "15-28 Pips (Gold) / 60-100 Pts (Nifty)", "HFT Algo Expansion"),
+    "Jupiter": ("MODERATE", "12-22 Pips (Gold) / 50-80 Pts (Nifty)", "Orderly Accumulation"),
+    "Venus": ("MODERATE", "8-15 Pips (Gold) / 40-65 Pts (Nifty)", "Mean Reversion / Retrace"),
+    "Moon": ("LOW", "5-10 Pips (Gold) / 20-40 Pts (Nifty)", "Chop & False Moves"),
+    "Saturn": ("LOW", "4-8 Pips (Gold) / 15-35 Pts (Nifty)", "Compression / Consolidation")
+}
+
 NAKSHATRAS = [
     ("Ashwini", "Ketu", "Agni / Sharp Spikes"), ("Bharani", "Venus", "Ugra / Traps"),
     ("Krittika", "Sun", "Agni / Volatility"), ("Rohini", "Moon", "Prithvi / Smooth Trend"),
@@ -28,14 +39,22 @@ NAKSHATRAS = [
 ]
 
 TITHIS = [
-    "Shukla Pratipada", "Shukla Dwitiya", "Shukla Tritiya", "Shukla Chaturthi",
-    "Shukla Panchami", "Shukla Shashthi", "Shukla Saptami", "Shukla Ashtami",
-    "Shukla Navami", "Shukla Dashami", "Shukla Ekadashi", "Shukla Dwadashi",
-    "Shukla Trayodashi", "Shukla Chaturdashi", "Purnima",
-    "Krishna Pratipada", "Krishna Dwitiya", "Krishna Tritiya", "Krishna Chaturthi",
-    "Krishna Panchami", "Krishna Shashthi", "Krishna Saptami", "Krishna Ashtami",
-    "Krishna Navami", "Krishna Dashami", "Krishna Ekadashi", "Krishna Dwadashi",
-    "Krishna Trayodashi", "Krishna Chaturdashi", "Amavasya"
+    ("Shukla Pratipada", "Nanda", "Balanced"), ("Shukla Dwitiya", "Bhadra", "Steady Trend"),
+    ("Shukla Tritiya", "Jaya", "High Momentum"), ("Shukla Chaturthi", "Rikta", "TRAP / False Break"),
+    ("Shukla Panchami", "Purna", "STRONG TREND"), ("Shukla Shashthi", "Nanda", "Balanced"),
+    ("Shukla Saptami", "Bhadra", "Steady Trend"), ("Shukla Ashtami", "Jaya", "High Momentum"),
+    ("Shukla Navami", "Rikta", "TRAP / False Break"), ("Shukla Dashami", "Purna", "STRONG TREND"),
+    ("Shukla Ekadashi", "Nanda", "Balanced"), ("Shukla Dwadashi", "Bhadra", "Steady Trend"),
+    ("Shukla Trayodashi", "Jaya", "High Momentum"), ("Shukla Chaturdashi", "Rikta", "TRAP / False Break"),
+    ("Purnima", "Purna", "STRONG TREND"),
+    ("Krishna Pratipada", "Nanda", "Balanced"), ("Krishna Dwitiya", "Bhadra", "Steady Trend"),
+    ("Krishna Tritiya", "Jaya", "High Momentum"), ("Krishna Chaturthi", "Rikta", "TRAP / False Break"),
+    ("Krishna Panchami", "Purna", "STRONG TREND"), ("Krishna Shashthi", "Nanda", "Balanced"),
+    ("Krishna Saptami", "Bhadra", "Steady Trend"), ("Krishna Ashtami", "Jaya", "High Momentum"),
+    ("Krishna Navami", "Rikta", "TRAP / False Break"), ("Krishna Dashami", "Purna", "STRONG TREND"),
+    ("Krishna Ekadashi", "Nanda", "Balanced"), ("Krishna Dwadashi", "Bhadra", "Steady Trend"),
+    ("Krishna Trayodashi", "Jaya", "High Momentum"), ("Krishna Chaturdashi", "Rikta", "TRAP / False Break"),
+    ("Amavasya", "Purna", "STRONG TREND")
 ]
 
 def julian_day(year, month, day, hour=0, minute=0):
@@ -78,10 +97,13 @@ def get_astronomical_parameters(target_date):
     is_bhadra = karana_idx in [8, 15, 21, 28, 35, 42, 49, 56]
     
     nak_name, nak_lord, nak_tattva = NAKSHATRAS[nak_idx]
+    tithi_name, tithi_nature, tithi_bias = TITHIS[tithi_idx]
+    
     return {
         "nakshatra": f"{nak_name} ({nak_lord})",
         "tattva_bias": nak_tattva,
-        "tithi": TITHIS[tithi_idx],
+        "tithi": f"{tithi_name} [{tithi_nature} - {tithi_bias}]",
+        "tithi_bias": tithi_bias,
         "moon_sun_angle": f"{diff:.1f}°",
         "bhadra": "⚠️ ACTIVE (Avoid Breakouts)" if is_bhadra else "✅ CLEAR (No Bhadra)"
     }
@@ -100,7 +122,6 @@ def calculate_day_data(target_date):
     def get_city_horas(city_name, region, lat, lon, tz_str):
         tz = pytz.timezone(tz_str)
         loc = LocationInfo(city_name, region, tz_str, lat, lon)
-        # Real Astronomical Sunrise / Sunset calculation for that exact date
         s_today = sun(loc.observer, date=target_date, tzinfo=tz)
         s_tom = sun(loc.observer, date=target_date + datetime.timedelta(days=1), tzinfo=tz)
         
@@ -113,19 +134,33 @@ def calculate_day_data(target_date):
         
         start_idx = CHALDEAN_ORDER.index(DAY_LORDS[target_date.weekday()])
         horas = []
+        
+        # Day Horas
         curr = sr_t
         for i in range(12):
             nxt = curr + d_len
-            horas.append([city_name, i + 1, "Day", CHALDEAN_ORDER[(start_idx + i) % 7],
-                          curr.strftime("%H:%M"), nxt.strftime("%H:%M"),
-                          curr.astimezone(ist).strftime("%H:%M"), nxt.astimezone(ist).strftime("%H:%M")])
+            lord = CHALDEAN_ORDER[(start_idx + i) % 7]
+            vol_level, exp_range, playbook = PLANET_VOLATILITY[lord]
+            horas.append([
+                city_name, i + 1, "Day", lord,
+                curr.strftime("%H:%M"), nxt.strftime("%H:%M"),
+                curr.astimezone(ist).strftime("%H:%M"), nxt.astimezone(ist).strftime("%H:%M"),
+                vol_level, exp_range, playbook, ""
+            ])
             curr = nxt
+            
+        # Night Horas
         curr = ss_t
         for i in range(12):
             nxt = curr + n_len
-            horas.append([city_name, 13 + i, "Night", CHALDEAN_ORDER[(start_idx + 12 + i) % 7],
-                          curr.strftime("%H:%M"), nxt.strftime("%H:%M"),
-                          curr.astimezone(ist).strftime("%H:%M"), nxt.astimezone(ist).strftime("%H:%M")])
+            lord = CHALDEAN_ORDER[(start_idx + 12 + i) % 7]
+            vol_level, exp_range, playbook = PLANET_VOLATILITY[lord]
+            horas.append([
+                city_name, 13 + i, "Night", lord,
+                curr.strftime("%H:%M"), nxt.strftime("%H:%M"),
+                curr.astimezone(ist).strftime("%H:%M"), nxt.astimezone(ist).strftime("%H:%M"),
+                vol_level, exp_range, playbook, ""
+            ])
             curr = nxt
         return horas, sr_t, ss_t
 
@@ -138,11 +173,11 @@ def calculate_day_data(target_date):
     date_str = target_date.strftime("%Y-%m-%d")
     
     dashboard_rows = [
-        ["🌟 DAILY ASTRO-PANCHANG & MARKET BIAS DASHBOARD", "", "", "", "", "", "DATE", date_str],
-        ["1. RAHU KAAL (TRAP ZONE)", astro_info["rahu_kaal"], "2. BHADRA STATUS", astro_info["bhadra"], "3. TITHI", astro_info["tithi"], "4. MOON-SUN ANGLE", astro_info["moon_sun_angle"]],
-        ["5. CHANDRA NAKSHATRA", astro_info["nakshatra"], "MARKET TATTVA BIAS", astro_info["tattva_bias"], "CONFLUENCE CHECK", "Align Hora with SMC Order Blocks / FVGs", "", ""],
-        ["", "", "", "", "", "", "", ""],
-        ["Market / Exchange", "Hora #", "Type", "Planet Lord", "Local Start", "Local End", "IST Start", "IST End"]
+        ["🌟 QUANTITATIVE ASTRO-PANCHANG & VOLATILITY DASHBOARD", "", "", "", "", "", "DATE", date_str, "SYSTEM", "45-Day Ephemeris Engine", "", ""],
+        ["1. RAHU KAAL (TRAP ZONE)", astro_info["rahu_kaal"], "2. BHADRA STATUS", astro_info["bhadra"], "3. TITHI REGIME", astro_info["tithi"], "4. MOON-SUN ANGLE", astro_info["moon_sun_angle"], "", "", "", ""],
+        ["5. CHANDRA NAKSHATRA", astro_info["nakshatra"], "MARKET TATTVA BIAS", astro_info["tattva_bias"], "CONFLUENCE CHECK", "Align Volatility Hora with 15m SMC Order Blocks / FVGs", "", "", "", "", "", ""],
+        ["", "", "", "", "", "", "", "", "", "", "", ""],
+        ["Market / Exchange", "Hora #", "Type", "Planet Lord", "Local Start", "Local End", "IST Start", "IST End", "Volatility", "Expected Range (Gold/Nifty)", "Execution Playbook", "Trade Logger (+/-R)"]
     ]
     return {"date": date_str, "data": dashboard_rows + m_horas + l_horas + ny_horas}
 
@@ -150,17 +185,15 @@ if __name__ == "__main__":
     ist = pytz.timezone("Asia/Kolkata")
     today = datetime.datetime.now(ist).date()
     
-    # Range: 30 days back to 15 days forward (Total ~46 individual exact astronomical calculations)
+    print("Computing astronomical ephemeris: Past 30 days to Next 15 days...")
     all_sheet_packets = []
-    print("Calculating astronomical ephemeris: -30 days to +15 days...")
-    
     for offset in range(-30, 16):
         d = today + datetime.timedelta(days=offset)
         all_sheet_packets.append(calculate_day_data(d))
     
     webhook_url = os.environ.get("HORA_WEBHOOK_URL")
     if not webhook_url:
-        print("Missing HORA_WEBHOOK_URL secret!")
+        print("CRITICAL: Missing HORA_WEBHOOK_URL secret!")
         exit(1)
         
     master_payload = {
@@ -168,6 +201,5 @@ if __name__ == "__main__":
         "sheets": all_sheet_packets
     }
     
-    # POST in batches or full payload
-    resp = requests.post(webhook_url, json=master_payload, timeout=90)
+    resp = requests.post(webhook_url, json=master_payload, timeout=120)
     print("Sheets Update Response:", resp.text)
