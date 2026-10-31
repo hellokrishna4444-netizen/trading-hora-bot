@@ -7,48 +7,24 @@ from astral import LocationInfo
 from astral.sun import sun
 
 CHALDEAN_ORDER = ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon"]
-
-DAY_LORDS = {
-    0: "Moon",     # Monday
-    1: "Mars",     # Tuesday
-    2: "Mercury",  # Wednesday
-    3: "Jupiter",  # Thursday
-    4: "Venus",    # Friday
-    5: "Saturn",   # Saturday
-    6: "Sun"       # Sunday
-}
-
-# Rahu Kaal 1/8th part of daytime (Monday to Sunday)
+DAY_LORDS = {0: "Moon", 1: "Mars", 2: "Mercury", 3: "Jupiter", 4: "Venus", 5: "Saturn", 6: "Sun"}
 RAHU_KAAL_PARTS = {0: 2, 1: 7, 2: 5, 3: 6, 4: 4, 5: 3, 6: 8}
 
 NAKSHATRAS = [
-    ("Ashwini", "Ketu", "Agni / Sharp Spikes"),
-    ("Bharani", "Venus", "Ugra / Aggressive Traps"),
-    ("Krittika", "Sun", "Agni / Institutional Volatility"),
-    ("Rohini", "Moon", "Prithvi / Smooth Trending"),
-    ("Mrigashira", "Mars", "Vayu / Mid-day Rapid Swings"),
-    ("Ardra", "Rahu", "Tikshna / High Risk & Whipsaws"),
-    ("Punarvasu", "Jupiter", "Chara / Trend Resumption"),
-    ("Pushya", "Saturn", "Sthira / Institutional Accumulation"),
-    ("Ashlesha", "Mercury", "Tikshna / Heavy Algo Games"),
-    ("Magha", "Ketu", "Ugra / Aggressive Liquidation"),
-    ("Purva Phalguni", "Venus", "Bhaga / Profit Booking Retrace"),
-    ("Uttara Phalguni", "Sun", "Dhruva / Strong Momentum Expansion"),
-    ("Hasta", "Moon", "Kshipra / Fast Scalping Flow"),
-    ("Chitra", "Mars", "Mridu / Sharp Technical Moves"),
-    ("Swati", "Rahu", "Chara / Big Range Expansions"),
-    ("Vishakha", "Jupiter", "Mishra / Swing Reversal Trials"),
-    ("Anuradha", "Saturn", "Mridu / Controlled Order Flow"),
-    ("Jyeshtha", "Mercury", "Tikshna / Stop Hunt & Shakeouts"),
-    ("Mula", "Ketu", "Tikshna / Sudden Heavy Drops"),
-    ("Purva Ashadha", "Venus", "Ugra / Breakout Failures"),
-    ("Uttara Ashadha", "Sun", "Dhruva / Strong Trend Days"),
-    ("Shravana", "Moon", "Chara / High Volume Follow-through"),
-    ("Dhanishta", "Mars", "Chara / Fast Momentum Runs"),
-    ("Shatabhisha", "Rahu", "Chara / Deceptive Price Action"),
-    ("Purva Bhadrapada", "Jupiter", "Ugra / Extreme Volatility"),
-    ("Uttara Bhadrapada", "Saturn", "Dhruva / Slow Solid Base"),
-    ("Revati", "Mercury", "Mridu / Range Closing & Balance")
+    ("Ashwini", "Ketu", "Agni / Sharp Spikes"), ("Bharani", "Venus", "Ugra / Traps"),
+    ("Krittika", "Sun", "Agni / Volatility"), ("Rohini", "Moon", "Prithvi / Smooth Trend"),
+    ("Mrigashira", "Mars", "Vayu / Mid-day Swings"), ("Ardra", "Rahu", "Tikshna / High Risk"),
+    ("Punarvasu", "Jupiter", "Chara / Trend Follow"), ("Pushya", "Saturn", "Sthira / Accumulation"),
+    ("Ashlesha", "Mercury", "Tikshna / Algo Games"), ("Magha", "Ketu", "Ugra / Liquidation"),
+    ("Purva Phalguni", "Venus", "Bhaga / Retrace"), ("Uttara Phalguni", "Sun", "Dhruva / Momentum"),
+    ("Hasta", "Moon", "Kshipra / Fast Scalp"), ("Chitra", "Mars", "Mridu / Sharp Moves"),
+    ("Swati", "Rahu", "Chara / Big Range"), ("Vishakha", "Jupiter", "Mishra / Reversal"),
+    ("Anuradha", "Saturn", "Mridu / Controlled Flow"), ("Jyeshtha", "Mercury", "Tikshna / Shakeouts"),
+    ("Mula", "Ketu", "Tikshna / Sharp Drops"), ("Purva Ashadha", "Venus", "Ugra / Breakout Trap"),
+    ("Uttara Ashadha", "Sun", "Dhruva / Strong Trend"), ("Shravana", "Moon", "Chara / High Volume"),
+    ("Dhanishta", "Mars", "Chara / Fast Momentum"), ("Shatabhisha", "Rahu", "Chara / Deceptive"),
+    ("Purva Bhadrapada", "Jupiter", "Ugra / Volatility"), ("Uttara Bhadrapada", "Saturn", "Dhruva / Solid Base"),
+    ("Revati", "Mercury", "Mridu / Range Close")
 ]
 
 TITHIS = [
@@ -74,15 +50,12 @@ def julian_day(year, month, day, hour=0, minute=0):
 def get_astronomical_parameters(target_date):
     jd = julian_day(target_date.year, target_date.month, target_date.day, 4, 0)
     t = (jd - 2451545.0) / 36525.0
-    
-    # Sun Longitude
     l0 = 280.46646 + 36000.76983 * t
     m = 357.52911 + 35999.05029 * t
     m_rad = math.radians(m % 360)
     c = (1.914602 - 0.004817 * t) * math.sin(m_rad) + 0.019993 * math.sin(2 * m_rad)
     sun_lon = (l0 + c) % 360
     
-    # Moon Longitude
     l_m = 218.3164477 + 481267.88123421 * t
     d = 297.8501921 + 445267.1114034 * t
     m_s = 357.5291092 + 35999.0502909 * t
@@ -90,29 +63,25 @@ def get_astronomical_parameters(target_date):
     f = 93.2720950 + 483202.0175233 * t
     
     d_r, ms_r, mm_r, f_r = map(math.radians, [d % 360, m_s % 360, m_m % 360, f % 360])
-    moon_lon = l_m + 6.288774 * math.sin(mm_r) + 1.274027 * math.sin(2*d_r - mm_r) + 0.658314 * math.sin(2*d_r) + 0.213618 * math.sin(2*mm_r) - 0.185116 * math.sin(ms_r) - 0.114332 * math.sin(2*f_r)
-    moon_lon = moon_lon % 360
+    moon_lon = (l_m + 6.288774 * math.sin(mm_r) + 1.274027 * math.sin(2*d_r - mm_r) + 
+                0.658314 * math.sin(2*d_r) + 0.213618 * math.sin(2*mm_r) - 
+                0.185116 * math.sin(ms_r) - 0.114332 * math.sin(2*f_r)) % 360
     
-    # Lahiri Ayanamsha (approx for current period)
     ayanamsha = 24.233
     s_sun = (sun_lon - ayanamsha) % 360
     s_moon = (moon_lon - ayanamsha) % 360
-    
     diff = (s_moon - s_sun) % 360
+    
     tithi_idx = int(math.floor(diff / 12)) % 30
     nak_idx = int(math.floor(s_moon / (360 / 27))) % 27
-    
     karana_idx = math.floor(diff / 6) + 1
-    vishti_karanas = [8, 15, 21, 28, 35, 42, 49, 56]
-    is_bhadra = karana_idx in vishti_karanas
+    is_bhadra = karana_idx in [8, 15, 21, 28, 35, 42, 49, 56]
     
     nak_name, nak_lord, nak_tattva = NAKSHATRAS[nak_idx]
-    tithi_name = TITHIS[tithi_idx]
-    
     return {
         "nakshatra": f"{nak_name} ({nak_lord})",
         "tattva_bias": nak_tattva,
-        "tithi": tithi_name,
+        "tithi": TITHIS[tithi_idx],
         "moon_sun_angle": f"{diff:.1f}°",
         "bhadra": "⚠️ ACTIVE (Avoid Breakouts)" if is_bhadra else "✅ CLEAR (No Bhadra)"
     }
@@ -125,88 +94,80 @@ def calculate_rahu_kaal(sunrise, sunset, weekday):
     rahu_end = rahu_start + part_len
     return f"{rahu_start.strftime('%H:%M')} - {rahu_end.strftime('%H:%M')} IST"
 
-def calculate_24_horas(city_name, region, lat, lon, tz_str, target_date):
-    tz = pytz.timezone(tz_str)
+def calculate_day_data(target_date):
     ist = pytz.timezone("Asia/Kolkata")
-    loc = LocationInfo(city_name, region, tz_str, lat, lon)
     
-    s_today = sun(loc.observer, date=target_date, tzinfo=tz)
-    s_tomorrow = sun(loc.observer, date=target_date + datetime.timedelta(days=1), tzinfo=tz)
-    
-    sunrise_today = s_today['sunrise']
-    sunset_today = s_today['sunset']
-    sunrise_tomorrow = s_tomorrow['sunrise']
-    
-    day_duration = (sunset_today - sunrise_today).total_seconds()
-    night_duration = (sunrise_tomorrow - sunset_today).total_seconds()
-    
-    day_hora_len = datetime.timedelta(seconds=day_duration / 12)
-    night_hora_len = datetime.timedelta(seconds=night_duration / 12)
-    
-    day_of_week = target_date.weekday()
-    start_idx = CHALDEAN_ORDER.index(DAY_LORDS[day_of_week])
-    
-    horas = []
-    
-    # 12 Day Horas
-    curr_start = sunrise_today
-    for i in range(12):
-        curr_end = curr_start + day_hora_len
-        horas.append([
-            city_name, i + 1, "Day", CHALDEAN_ORDER[(start_idx + i) % 7],
-            curr_start.strftime("%H:%M"), curr_end.strftime("%H:%M"),
-            curr_start.astimezone(ist).strftime("%H:%M"), curr_end.astimezone(ist).strftime("%H:%M")
-        ])
-        curr_start = curr_end
+    def get_city_horas(city_name, region, lat, lon, tz_str):
+        tz = pytz.timezone(tz_str)
+        loc = LocationInfo(city_name, region, tz_str, lat, lon)
+        # Real Astronomical Sunrise / Sunset calculation for that exact date
+        s_today = sun(loc.observer, date=target_date, tzinfo=tz)
+        s_tom = sun(loc.observer, date=target_date + datetime.timedelta(days=1), tzinfo=tz)
         
-    # 12 Night Horas
-    curr_start = sunset_today
-    for i in range(12):
-        curr_end = curr_start + night_hora_len
-        horas.append([
-            city_name, 13 + i, "Night", CHALDEAN_ORDER[(start_idx + 12 + i) % 7],
-            curr_start.strftime("%H:%M"), curr_end.strftime("%H:%M"),
-            curr_start.astimezone(ist).strftime("%H:%M"), curr_end.astimezone(ist).strftime("%H:%M")
-        ])
-        curr_start = curr_end
+        sr_t = s_today['sunrise']
+        ss_t = s_today['sunset']
+        sr_next = s_tom['sunrise']
         
-    return horas, sunrise_today, sunset_today
+        d_len = datetime.timedelta(seconds=(ss_t - sr_t).total_seconds() / 12)
+        n_len = datetime.timedelta(seconds=(sr_next - ss_t).total_seconds() / 12)
+        
+        start_idx = CHALDEAN_ORDER.index(DAY_LORDS[target_date.weekday()])
+        horas = []
+        curr = sr_t
+        for i in range(12):
+            nxt = curr + d_len
+            horas.append([city_name, i + 1, "Day", CHALDEAN_ORDER[(start_idx + i) % 7],
+                          curr.strftime("%H:%M"), nxt.strftime("%H:%M"),
+                          curr.astimezone(ist).strftime("%H:%M"), nxt.astimezone(ist).strftime("%H:%M")])
+            curr = nxt
+        curr = ss_t
+        for i in range(12):
+            nxt = curr + n_len
+            horas.append([city_name, 13 + i, "Night", CHALDEAN_ORDER[(start_idx + 12 + i) % 7],
+                          curr.strftime("%H:%M"), nxt.strftime("%H:%M"),
+                          curr.astimezone(ist).strftime("%H:%M"), nxt.astimezone(ist).strftime("%H:%M")])
+            curr = nxt
+        return horas, sr_t, ss_t
 
-def push_to_sheets(date_str, astro_data, payload):
-    webhook_url = os.environ.get("HORA_WEBHOOK_URL")
-    if not webhook_url:
-        print("CRITICAL: HORA_WEBHOOK_URL environment variable is missing!")
-        exit(1)
-        
-    # Row 1 to Row 4: Summary Card Rows
+    m_horas, m_sr, m_ss = get_city_horas("Mumbai (NSE)", "India", 19.0760, 72.8777, "Asia/Kolkata")
+    l_horas, _, _ = get_city_horas("London (LBMA)", "UK", 51.5074, -0.1278, "Europe/London")
+    ny_horas, _, _ = get_city_horas("New York (COMEX)", "USA", 40.7128, -74.0060, "America/New_York")
+    
+    astro_info = get_astronomical_parameters(target_date)
+    astro_info["rahu_kaal"] = calculate_rahu_kaal(m_sr.astimezone(ist), m_ss.astimezone(ist), target_date.weekday())
+    date_str = target_date.strftime("%Y-%m-%d")
+    
     dashboard_rows = [
         ["🌟 DAILY ASTRO-PANCHANG & MARKET BIAS DASHBOARD", "", "", "", "", "", "DATE", date_str],
-        ["1. RAHU KAAL (TRAP ZONE)", astro_data["rahu_kaal"], "2. BHADRA STATUS", astro_data["bhadra"], "3. TITHI", astro_data["tithi"], "4. MOON-SUN ANGLE", astro_data["moon_sun_angle"]],
-        ["5. CHANDRA NAKSHATRA", astro_data["nakshatra"], "MARKET TATTVA BIAS", astro_data["tattva_bias"], "CONFLUENCE CHECK", "Align Hora with SMC Order Blocks / FVGs", "", ""],
+        ["1. RAHU KAAL (TRAP ZONE)", astro_info["rahu_kaal"], "2. BHADRA STATUS", astro_info["bhadra"], "3. TITHI", astro_info["tithi"], "4. MOON-SUN ANGLE", astro_info["moon_sun_angle"]],
+        ["5. CHANDRA NAKSHATRA", astro_info["nakshatra"], "MARKET TATTVA BIAS", astro_info["tattva_bias"], "CONFLUENCE CHECK", "Align Hora with SMC Order Blocks / FVGs", "", ""],
         ["", "", "", "", "", "", "", ""],
         ["Market / Exchange", "Hora #", "Type", "Planet Lord", "Local Start", "Local End", "IST Start", "IST End"]
     ]
-    
-    all_rows = dashboard_rows + payload
-    packet = {"date": date_str, "data": all_rows}
-    
-    print(f"Pushing complete astro dashboard to Google Sheets for {date_str}...")
-    response = requests.post(webhook_url, json=packet, timeout=30)
-    print("Apps Script Response:", response.text)
-    if response.status_code != 200:
-        exit(1)
+    return {"date": date_str, "data": dashboard_rows + m_horas + l_horas + ny_horas}
 
 if __name__ == "__main__":
     ist = pytz.timezone("Asia/Kolkata")
     today = datetime.datetime.now(ist).date()
-    today_str = today.strftime("%Y-%m-%d")
     
-    mumbai_horas, m_sr, m_ss = calculate_24_horas("Mumbai (NSE)", "India", 19.0760, 72.8777, "Asia/Kolkata", today)
-    london_horas, _, _ = calculate_24_horas("London (LBMA)", "UK", 51.5074, -0.1278, "Europe/London", today)
-    ny_horas, _, _ = calculate_24_horas("New York (COMEX)", "USA", 40.7128, -74.0060, "America/New_York", today)
+    # Range: 30 days back to 15 days forward (Total ~46 individual exact astronomical calculations)
+    all_sheet_packets = []
+    print("Calculating astronomical ephemeris: -30 days to +15 days...")
     
-    astro_info = get_astronomical_parameters(today)
-    astro_info["rahu_kaal"] = calculate_rahu_kaal(m_sr.astimezone(ist), m_ss.astimezone(ist), today.weekday())
+    for offset in range(-30, 16):
+        d = today + datetime.timedelta(days=offset)
+        all_sheet_packets.append(calculate_day_data(d))
     
-    combined_horas = mumbai_horas + london_horas + ny_horas
-    push_to_sheets(today_str, astro_info, combined_horas)
+    webhook_url = os.environ.get("HORA_WEBHOOK_URL")
+    if not webhook_url:
+        print("Missing HORA_WEBHOOK_URL secret!")
+        exit(1)
+        
+    master_payload = {
+        "today": today.strftime("%Y-%m-%d"),
+        "sheets": all_sheet_packets
+    }
+    
+    # POST in batches or full payload
+    resp = requests.post(webhook_url, json=master_payload, timeout=90)
+    print("Sheets Update Response:", resp.text)
