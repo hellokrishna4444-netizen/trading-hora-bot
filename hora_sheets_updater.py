@@ -163,6 +163,8 @@ def calculate_day_data(target_date):
             curr = nxt
         return horas, sr_t, ss_t
 
+    # 4 Global Centers: Tokyo (Asian Session), Mumbai (India), London (Europe), New York (US)
+    tokyo_horas, _, _ = get_city_horas("Tokyo (TSE)", "Japan", 35.6762, 139.6503, "Asia/Tokyo")
     m_horas, m_sr, m_ss = get_city_horas("Mumbai (NSE)", "India", 19.0760, 72.8777, "Asia/Kolkata")
     l_horas, _, _ = get_city_horas("London (LBMA)", "UK", 51.5074, -0.1278, "Europe/London")
     ny_horas, _, _ = get_city_horas("New York (COMEX)", "USA", 40.7128, -74.0060, "America/New_York")
@@ -178,7 +180,9 @@ def calculate_day_data(target_date):
         ["", "", "", "", "", "", "", "", "", "", "", ""],
         ["Market / Exchange", "Hora #", "Type", "Planet Lord", "Local Start", "Local End", "IST Start", "IST End", "Volatility", "Expected Range (Gold/Nifty)", "Execution Playbook", "Trade Logger (+/-R)"]
     ]
-    return {"date": date_str, "data": dashboard_rows + m_horas + l_horas + ny_horas}
+    
+    all_rows = dashboard_rows + tokyo_horas + m_horas + l_horas + ny_horas
+    return {"date": date_str, "data": all_rows}
 
 if __name__ == "__main__":
     ist = pytz.timezone("Asia/Kolkata")
@@ -197,7 +201,7 @@ if __name__ == "__main__":
         
     today_str = today.strftime("%Y-%m-%d")
     
-    # Send in small chunks of 5 days to avoid Google Apps Script Timeout
+    # 5-5 days chunk transmission to avoid timeout
     chunk_size = 5
     for i in range(0, len(all_sheet_packets), chunk_size):
         chunk = all_sheet_packets[i:i + chunk_size]
@@ -212,4 +216,4 @@ if __name__ == "__main__":
         print("Result:", res.text)
         time.sleep(1)
 
-    print("All 45 dates successfully synced with soft color formatting!")
+    print("All 45 dates with Asian Session (Tokyo TSE) successfully updated!")
