@@ -134,17 +134,50 @@ def calculate_day_data(target_date):
         start_idx = CHALDEAN_ORDER.index(DAY_LORDS[target_date.weekday()])
         horas = []
         
+        # Exact Open Times to mark:
+        # Tokyo opens: 09:00 Tokyo time (~05:30 IST)
+        # Mumbai opens: 09:15 IST
+        # London opens: 08:00 London time (~13:30 IST)
+        # New York opens: 09:30 NY time (~19:00 / 20:00 IST)
+        
+        def check_is_open(exchange, ist_s, ist_e, h_num, h_type):
+            s_min = ist_s.hour * 60 + ist_s.minute
+            e_min = ist_e.hour * 60 + ist_e.minute
+            if e_min < s_min:
+                e_min += 1440
+                
+            if "Tokyo" in exchange:
+                # Tokyo stock exchange open: 05:30 AM IST (330 mins)
+                return 1 if (s_min <= 330 < e_min) else 0
+            elif "Mumbai" in exchange:
+                # NSE open: 09:15 AM IST (555 mins)
+                return 1 if (s_min <= 555 < e_min) else 0
+            elif "London" in exchange:
+                # London open: ~08:00 Local time (approx 13:30 IST = 810 mins)
+                return 1 if (s_min <= 810 < e_min) else 0
+            elif "New York" in exchange:
+                # US cash session open: ~09:30 NY time (approx 19:00 or 20:00 IST = 1140/1200 mins)
+                # Usually Day 2 or Day 3 hora
+                return 1 if (s_min <= 1170 < e_min) else 0
+            return 0
+            
         # Day Horas
         curr = sr_t
         for i in range(12):
             nxt = curr + d_len
             lord = CHALDEAN_ORDER[(start_idx + i) % 7]
             vol_level, exp_range, playbook = PLANET_VOLATILITY[lord]
+            ist_start_dt = curr.astimezone(ist)
+            ist_end_dt = nxt.astimezone(ist)
+            
+            is_open = check_is_open(city_name, ist_start_dt, ist_end_dt, i + 1, "Day")
+            open_tag = "🔔 SESSION OPEN" if is_open else ""
+            
             horas.append([
-                city_name, i + 1, "Day", lord,
+                city_name, f"{i + 1} Day", "Day", lord,
                 curr.strftime("%H:%M"), nxt.strftime("%H:%M"),
-                curr.astimezone(ist).strftime("%H:%M"), nxt.astimezone(ist).strftime("%H:%M"),
-                vol_level, exp_range, playbook, ""
+                ist_start_dt.strftime("%H:%M"), ist_end_dt.strftime("%H:%M"),
+                vol_level, exp_range, playbook, open_tag
             ])
             curr = nxt
             
@@ -154,16 +187,21 @@ def calculate_day_data(target_date):
             nxt = curr + n_len
             lord = CHALDEAN_ORDER[(start_idx + 12 + i) % 7]
             vol_level, exp_range, playbook = PLANET_VOLATILITY[lord]
+            ist_start_dt = curr.astimezone(ist)
+            ist_end_dt = nxt.astimezone(ist)
+            
+            is_open = check_is_open(city_name, ist_start_dt, ist_end_dt, 13 + i, "Night")
+            open_tag = "🔔 SESSION OPEN" if is_open else ""
+            
             horas.append([
-                city_name, 13 + i, "Night", lord,
+                city_name, f"{13 + i} Night", "Night", lord,
                 curr.strftime("%H:%M"), nxt.strftime("%H:%M"),
-                curr.astimezone(ist).strftime("%H:%M"), nxt.astimezone(ist).strftime("%H:%M"),
-                vol_level, exp_range, playbook, ""
+                ist_start_dt.strftime("%H:%M"), ist_end_dt.strftime("%H:%M"),
+                vol_level, exp_range, playbook, open_tag
             ])
             curr = nxt
         return horas, sr_t, ss_t
 
-    # 4 Global Centers: Tokyo (Asian Session), Mumbai (India), London (Europe), New York (US)
     tokyo_horas, _, _ = get_city_horas("Tokyo (TSE)", "Japan", 35.6762, 139.6503, "Asia/Tokyo")
     m_horas, m_sr, m_ss = get_city_horas("Mumbai (NSE)", "India", 19.0760, 72.8777, "Asia/Kolkata")
     l_horas, _, _ = get_city_horas("London (LBMA)", "UK", 51.5074, -0.1278, "Europe/London")
@@ -178,7 +216,7 @@ def calculate_day_data(target_date):
         ["1. RAHU KAAL (TRAP ZONE)", astro_info["rahu_kaal"], "2. BHADRA STATUS", astro_info["bhadra"], "3. TITHI REGIME", astro_info["tithi"], "4. MOON-SUN ANGLE", astro_info["moon_sun_angle"], "", "", "", ""],
         ["5. CHANDRA NAKSHATRA", astro_info["nakshatra"], "MARKET TATTVA BIAS", astro_info["tattva_bias"], "CONFLUENCE CHECK", "Align Volatility Hora with 15m SMC Order Blocks / FVGs", "", "", "", "", "", ""],
         ["", "", "", "", "", "", "", "", "", "", "", ""],
-        ["Market / Exchange", "Hora #", "Type", "Planet Lord", "Local Start", "Local End", "IST Start", "IST End", "Volatility", "Expected Range (Gold/Nifty)", "Execution Playbook", "Trade Logger (+/-R)"]
+        ["Market / Exchange", "Hora #", "Type", "Planet Lord", "Local Start", "Local End", "IST Start", "IST End", "Volatility", "Expected Range (Gold/Nifty)", "Execution Playbook", "Session Alert"]
     ]
     
     all_rows = dashboard_rows + tokyo_horas + m_horas + l_horas + ny_horas
@@ -188,7 +226,7 @@ if __name__ == "__main__":
     ist = pytz.timezone("Asia/Kolkata")
     today = datetime.datetime.now(ist).date()
     
-    print("Computing astronomical ephemeris: -30 days to +15 days...")
+    print("Computing ephemeris with SESSION OPEN markers: -30 to +15 days...")
     all_sheet_packets = []
     for offset in range(-30, 16):
         d = today + datetime.timedelta(days=offset)
@@ -196,12 +234,11 @@ if __name__ == "__main__":
     
     webhook_url = os.environ.get("HORA_WEBHOOK_URL")
     if not webhook_url:
-        print("CRITICAL: Missing HORA_WEBHOOK_URL secret!")
+        print("Missing HORA_WEBHOOK_URL secret!")
         exit(1)
         
     today_str = today.strftime("%Y-%m-%d")
     
-    # 5-5 days chunk transmission to avoid timeout
     chunk_size = 5
     for i in range(0, len(all_sheet_packets), chunk_size):
         chunk = all_sheet_packets[i:i + chunk_size]
@@ -211,9 +248,9 @@ if __name__ == "__main__":
             "sheets": chunk,
             "cleanup": is_last_chunk
         }
-        print(f"Pushing chunk {i//chunk_size + 1}/{(len(all_sheet_packets)-1)//chunk_size + 1} ({len(chunk)} dates)...")
+        print(f"Pushing chunk {i//chunk_size + 1}/{(len(all_sheet_packets)-1)//chunk_size + 1}...")
         res = requests.post(webhook_url, json=payload, timeout=60)
         print("Result:", res.text)
         time.sleep(1)
 
-    print("All 45 dates with Asian Session (Tokyo TSE) successfully updated!")
+    print("Success: All sheets marked with session open and volatility highlights!")
